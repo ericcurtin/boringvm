@@ -74,12 +74,16 @@ def delete_vm(image_name):
     else:
         print(f"Image {image_name} does not exist!")
 
+def mkdir():
+    os.makedirs(os.path.expanduser("~/.local/share/boringvm/vms"), exist_ok=True)
+
 # Main handler for Docker-like commands
 def main():
     if len(sys.argv) < 2:
-        print("usage: ramalama <command> [<args>]")
+        print("usage: boringvm <command> [<args>]")
         return
 
+    mkdir()
     command = sys.argv[1]
 
     if command == "ps":
@@ -90,7 +94,7 @@ def main():
 
     elif command == "run":
         if len(sys.argv) < 3:
-            print("usage: ramalama run <image_name> [--ram <ram_mb>] [--cpu <cores>]")
+            print("usage: boringvm run <image_name> [--ram <ram_mb>] [--cpu <cores>]")
             return
         image_name = sys.argv[2]
         ram = int(sys.argv[sys.argv.index("--ram") + 1]) if "--ram" in sys.argv else 1024
@@ -99,7 +103,7 @@ def main():
 
     elif command == "create":
         if len(sys.argv) < 3:
-            print("usage: ramalama create <image_name> [--size <size>]")
+            print("usage: boringvm create <image_name> [--size <size>]")
             return
         image_name = sys.argv[2]
         size = sys.argv[sys.argv.index("--size") + 1] if "--size" in sys.argv else "10G"
@@ -107,14 +111,14 @@ def main():
 
     elif command == "stop":
         if len(sys.argv) < 3:
-            print("usage: ramalama stop <image_name>")
+            print("usage: boringvm stop <image_name>")
             return
         image_name = sys.argv[2]
         stop_vm(image_name)
 
     elif command == "rm":
         if len(sys.argv) < 3:
-            print("usage: ramalama rm <image_name>")
+            print("usage: boringvm rm <image_name>")
             return
         image_name = sys.argv[2]
         delete_vm(image_name)
