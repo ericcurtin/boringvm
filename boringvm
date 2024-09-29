@@ -6,12 +6,6 @@ import sys
 import time
 import shutil
 
-# VM storage path (You can change this to where you store your VMs)
-VM_PATH = "./vms"
-
-# Create directory if it does not exist
-os.makedirs(VM_PATH, exist_ok=True)
-
 # Function to list running VMs
 def list_running_vms():
     print("Running VMs:")
@@ -20,13 +14,13 @@ def list_running_vms():
 # Function to list VM images
 def list_images():
     print("Available VM images (.qcow2):")
-    for vm in os.listdir(VM_PATH):
+    for vm in os.listdir(get_vm_store()):
         if vm.endswith(".qcow2"):
             print(vm)
 
 # Function to run a VM
 def run_vm(image_name, ram=1024, cpu_cores=1):
-    image_path = os.path.join(VM_PATH, image_name)
+    image_path = os.path.join(get_vm_store(), image_name)
     if not os.path.exists(image_path):
         print(f"Image {image_name} does not exist!")
         return
@@ -44,15 +38,39 @@ def run_vm(image_name, ram=1024, cpu_cores=1):
     ]
     subprocess.Popen(cmd)
 
+def exec_cmd(args, stderr=True):
+    if False:
+        print(*args)
+
+    if not stderr:
+        # Redirecting stderr to /dev/null
+        with open(os.devnull, "w") as devnull:
+            os.dup2(devnull.fileno(), sys.stderr.fileno())
+
+    try:
+        return os.execvp(args[0], args)
+    except Exception:
+        perror(f"os.execvp({args[0]}, {args})")
+        raise
+
 # Function to create a VM image
-def create_vm(image_name, size="10G"):
-    image_path = os.path.join(VM_PATH, image_name)
+def create_vm(image_name):
+    image_path = os.path.join(get_vm_store(), image_name) + ".qcow2"
     if os.path.exists(image_path):
         print(f"Image {image_name} already exists!")
         return
 
+    statvfs = os.statvfs(".")
+    free_space = statvfs.f_bavail * statvfs.f_frsize
+    size = free_space / (1024 ** 3)
+    power_of_2 = 1
+    while power_of_2 * 2 <= size:
+        power_of_2 *= 2
+
+    size = power_of_2
+
     print(f"Creating new VM image {image_name} with size {size}...")
-    subprocess.run(["qemu-img", "create", "-f", "qcow2", image_path, size])
+    exec_cmd(["qemu-img", "create", "-f", "qcow2", image_path, f"{size}G"])
 
 # Function to stop a running VM (by killing the QEMU process)
 def stop_vm(image_name):
@@ -74,8 +92,14 @@ def delete_vm(image_name):
     else:
         print(f"Image {image_name} does not exist!")
 
+def get_vm_store():
+    if os.geteuid() == 0:
+        return "/var/lib/ramalama"
+
+    return os.path.expanduser("~/.local/share/ramalama")
+
 def mkdir():
-    os.makedirs(os.path.expanduser("~/.local/share/boringvm/vms"), exist_ok=True)
+    os.makedirs(get_vm_store(), exist_ok=True)
 
 # Main handler for Docker-like commands
 def main():
@@ -103,11 +127,10 @@ def main():
 
     elif command == "create":
         if len(sys.argv) < 3:
-            print("usage: boringvm create <image_name> [--size <size>]")
+            print("usage: boringvm create <image_name>")
             return
         image_name = sys.argv[2]
-        size = sys.argv[sys.argv.index("--size") + 1] if "--size" in sys.argv else "10G"
-        create_vm(image_name, size)
+        create_vm(image_name)
 
     elif command == "stop":
         if len(sys.argv) < 3:
