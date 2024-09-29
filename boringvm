@@ -97,16 +97,40 @@ def run_vm(image_name, ram=1024, cpu_cores=1):
 
     print(f"Starting VM {image_name}...")
     cmd = [
-        "qemu-system-x86_64",
-        "-hda", image_path,
-        "-m", str(ram),
-        "-smp", str(cpu_cores),
-        "-enable-kvm",
-        "-net", "nic",
-        "-net", "user",
-        "-nographic"  # No graphical output, run in the terminal
+        "qemu-system-aarch64",
+        "-device",
+        "virtio-gpu-pci",
+        "-display",
+        "default,show-cursor=on",
+        "-device",
+        "qemu-xhci",
+        "-device",
+        "usb-kbd",
+        "-device",
+        "usb-tablet",
+        "-drive",
+        "file=/opt/homebrew/share/qemu/edk2-aarch64-code.fd,if=pflash,format=raw,unit=0,readonly=on",
+        "-drive",
+        "file=/opt/homebrew/share/qemu/edk2-arm-vars.fd,if=pflash,format=raw,unit=1,snapshot=on,readonly=off",
+        "-smp",
+        str(cpu_cores),
+        "-accel",
+        "hvf",
+        "-m",
+        str(ram),
+        "-machine",
+        "virt",
+        "-cpu",
+        "host",
+        "-device",
+        "virtio-net-pci,netdev=n0,mac=FE:40:64:26:D6:FF",
+        "-netdev",
+        "user,id=n0,net=10.0.2.0/24,hostfwd=tcp::2222-:22",
+        "-drive",
+        f"file={image_name},index=0,media=disk,format=qcow2,if=virtio,id=rootdisk,snapshot=off",
+        "-nographic"
     ]
-    subprocess.Popen(cmd)
+    exec_cmd(cmd)
 
 def exec_cmd(args, stderr=True):
     if False:
@@ -190,7 +214,8 @@ def main():
             return
 
         image_name = sys.argv[2]
-        if "--ram" in sys.arg:
+        image_name = f"{get_vm_store()}/{image_name}.qcow2"
+        if "--ram" in sys.argv:
             ram = int(sys.argv[sys.argv.index("--ram") + 1])
         else:
             ram = 1024
