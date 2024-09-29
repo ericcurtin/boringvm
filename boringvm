@@ -138,7 +138,6 @@ def create_vm(image_name):
         power_of_2 *= 2
 
     size = power_of_2
-
     print(f"Creating new VM image {image_name} with size {size}...")
     exec_cmd(["qemu-img", "create", "-f", "qcow2", image_path, f"{size}G"])
 
@@ -150,8 +149,9 @@ def stop_vm(image_name):
         pid = result.stdout.strip()
         os.kill(int(pid), 9)
         print(f"VM {image_name} stopped.")
-    else:
-        print(f"No running VM found with image {image_name}.")
+        return
+
+    print(f"No running VM found with image {image_name}.")
 
 # Function to delete a VM image
 def delete_vm(image_name):
@@ -159,8 +159,9 @@ def delete_vm(image_name):
     if os.path.exists(image_path):
         print(f"Deleting VM image {image_name}...")
         os.remove(image_path)
-    else:
-        print(f"Image {image_name} does not exist!")
+        return
+
+    print(f"Image {image_name} does not exist!")
 
 def get_vm_store():
     if os.geteuid() == 0:
@@ -187,6 +188,7 @@ def main():
         if len(sys.argv) < 3:
             print("usage: boringvm run <image_name> [--ram <ram_mb>] [--cpu <cores>]")
             return
+
         image_name = sys.argv[2]
         if "--ram" in sys.arg:
             ram = int(sys.argv[sys.argv.index("--ram") + 1])
@@ -225,3 +227,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
