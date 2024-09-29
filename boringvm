@@ -1,0 +1,126 @@
+#!/usr/bin/python3
+
+import os
+import subprocess
+import sys
+import time
+import shutil
+
+# VM storage path (You can change this to where you store your VMs)
+VM_PATH = "./vms"
+
+# Create directory if it does not exist
+os.makedirs(VM_PATH, exist_ok=True)
+
+# Function to list running VMs
+def list_running_vms():
+    print("Running VMs:")
+    subprocess.run(['ps', '-ef', '|', 'grep', 'qemu'])
+
+# Function to list VM images
+def list_images():
+    print("Available VM images (.qcow2):")
+    for vm in os.listdir(VM_PATH):
+        if vm.endswith(".qcow2"):
+            print(vm)
+
+# Function to run a VM
+def run_vm(image_name, ram=1024, cpu_cores=1):
+    image_path = os.path.join(VM_PATH, image_name)
+    if not os.path.exists(image_path):
+        print(f"Image {image_name} does not exist!")
+        return
+
+    print(f"Starting VM {image_name}...")
+    cmd = [
+        "qemu-system-x86_64",
+        "-hda", image_path,
+        "-m", str(ram),
+        "-smp", str(cpu_cores),
+        "-enable-kvm",
+        "-net", "nic",
+        "-net", "user",
+        "-nographic"  # No graphical output, run in the terminal
+    ]
+    subprocess.Popen(cmd)
+
+# Function to create a VM image
+def create_vm(image_name, size="10G"):
+    image_path = os.path.join(VM_PATH, image_name)
+    if os.path.exists(image_path):
+        print(f"Image {image_name} already exists!")
+        return
+
+    print(f"Creating new VM image {image_name} with size {size}...")
+    subprocess.run(["qemu-img", "create", "-f", "qcow2", image_path, size])
+
+# Function to stop a running VM (by killing the QEMU process)
+def stop_vm(image_name):
+    print(f"Stopping VM {image_name}...")
+    result = subprocess.run(['pgrep', '-f', image_name], capture_output=True, text=True)
+    if result.stdout:
+        pid = result.stdout.strip()
+        os.kill(int(pid), 9)
+        print(f"VM {image_name} stopped.")
+    else:
+        print(f"No running VM found with image {image_name}.")
+
+# Function to delete a VM image
+def delete_vm(image_name):
+    image_path = os.path.join(VM_PATH, image_name)
+    if os.path.exists(image_path):
+        print(f"Deleting VM image {image_name}...")
+        os.remove(image_path)
+    else:
+        print(f"Image {image_name} does not exist!")
+
+# Main handler for Docker-like commands
+def main():
+    if len(sys.argv) < 2:
+        print("usage: ramalama <command> [<args>]")
+        return
+
+    command = sys.argv[1]
+
+    if command == "ps":
+        list_running_vms()
+
+    elif command == "images":
+        list_images()
+
+    elif command == "run":
+        if len(sys.argv) < 3:
+            print("usage: ramalama run <image_name> [--ram <ram_mb>] [--cpu <cores>]")
+            return
+        image_name = sys.argv[2]
+        ram = int(sys.argv[sys.argv.index("--ram") + 1]) if "--ram" in sys.argv else 1024
+        cpu_cores = int(sys.argv[sys.argv.index("--cpu") + 1]) if "--cpu" in sys.argv else 1
+        run_vm(image_name, ram, cpu_cores)
+
+    elif command == "create":
+        if len(sys.argv) < 3:
+            print("usage: ramalama create <image_name> [--size <size>]")
+            return
+        image_name = sys.argv[2]
+        size = sys.argv[sys.argv.index("--size") + 1] if "--size" in sys.argv else "10G"
+        create_vm(image_name, size)
+
+    elif command == "stop":
+        if len(sys.argv) < 3:
+            print("usage: ramalama stop <image_name>")
+            return
+        image_name = sys.argv[2]
+        stop_vm(image_name)
+
+    elif command == "rm":
+        if len(sys.argv) < 3:
+            print("usage: ramalama rm <image_name>")
+            return
+        image_name = sys.argv[2]
+        delete_vm(image_name)
+
+    else:
+        print(f"Unknown command: {command}")
+
+if __name__ == "__main__":
+    main()
