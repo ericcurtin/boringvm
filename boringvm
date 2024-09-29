@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+from pathlib import Path
 import os
 import subprocess
 import sys
@@ -11,12 +12,81 @@ def list_running_vms():
     print("Running VMs:")
     subprocess.run(['ps', '-ef', '|', 'grep', 'qemu'])
 
-# Function to list VM images
+
+def human_duration(d):
+    if d < 1:
+        return "Less than a second"
+    elif d == 1:
+        return "1 second"
+    elif d < 60:
+        return f"{d} seconds"
+    elif d < 120:
+        return "1 minute"
+    elif d < 3600:
+        return f"{d // 60} minutes"
+    elif d < 7200:
+        return "1 hour"
+    elif d < 86400:
+        return f"{d // 3600} hours"
+    elif d < 172800:
+        return "1 day"
+    elif d < 604800:
+        return f"{d // 86400} days"
+    elif d < 1209600:
+        return "1 week"
+    elif d < 2419200:
+        return f"{d // 604800} weeks"
+    elif d < 4838400:
+        return "1 month"
+    elif d < 31536000:
+        return f"{d // 2419200} months"
+    elif d < 63072000:
+        return "1 year"
+    else:
+        return f"{d // 31536000} years"
+
+
+def list_files_by_modification():
+    return sorted(Path().rglob("*"), key=lambda p: os.path.getmtime(p), reverse=True)
+
+
+def list_vms():
+    mycwd = os.getcwd()
+    os.chdir(get_vm_store())
+    vms = []
+
+    # Collect vm data
+    for path in list_files_by_modification():
+        name = str(path)
+        file_epoch = path.lstat().st_mtime
+        modified = int(time.time() - file_epoch)
+        size = subprocess.run(["du", "-h", str(path.resolve())], capture_output=True, text=True).stdout.split()[0]
+        name = name[:-6]
+
+        # Store data for later use
+        vms.append({"name": name, "modified": modified, "size": size})
+
+    os.chdir(mycwd)
+    return vms
+
+
 def list_images():
-    print("Available VM images (.qcow2):")
-    for vm in os.listdir(get_vm_store()):
-        if vm.endswith(".qcow2"):
-            print(vm)
+    vms = list_vms()
+
+    # Calculate maximum width for each column
+    name_width = len("NAME")
+    modified_width = len("MODIFIED")
+    size_width = len("SIZE")
+    for vm in vms:
+        modified = human_duration(vm["modified"]) + " ago"
+        name_width = max(name_width, len(vm["name"]))
+        modified_width = max(modified_width, len(modified))
+        size_width = max(size_width, len(vm["size"]))
+
+    print(f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}")
+    for vm in vms:
+        print(f"{vm['name']:<{name_width}} {modified:<{modified_width}} {vm['size']:<{size_width}}")
+
 
 # Function to run a VM
 def run_vm(image_name, ram=1024, cpu_cores=1):
@@ -94,9 +164,9 @@ def delete_vm(image_name):
 
 def get_vm_store():
     if os.geteuid() == 0:
-        return "/var/lib/ramalama"
+        return "/var/lib/boringvm/vms"
 
-    return os.path.expanduser("~/.local/share/ramalama")
+    return os.path.expanduser("~/.local/share/boringvm/vms")
 
 def mkdir():
     os.makedirs(get_vm_store(), exist_ok=True)
