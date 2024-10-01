@@ -5,7 +5,7 @@ main() {
 
   black --line-length 80 boringvm
   flake8 --max-line-length=80 boringvm
-  shellcheck *.sh
+  shellcheck -- *.sh
 }
 
 main "$@"

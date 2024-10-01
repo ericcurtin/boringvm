@@ -11,6 +11,7 @@ main() {
   local os
   os="$(uname -s)"
   if [ "$os" == "Darwin" ]; then
+    brew install shellcheck
     ./install.sh
   else
     $maybe_sudo ./install.sh
