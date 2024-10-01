@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/ericcurtin/boringvm/s/install.sh | 
 - **run** a vms with various configurations
 - **list** running vms and images
 - **ssh** into running vms
-- **stop** or **Delete** a vm
+- **stop** or **delete** a vm
 - **copy ssh key** to a vm
 
 ## Requirements
@@ -72,7 +72,7 @@ boringvm run <vm_name> [--cdrom <path>] [--graphic] [-i]
 ```
 
 Options:
-- `--cdrom <path>`: Path to the cdrom image to boot from.
+- `--cdrom <path>`: Path to the cdrom image (.iso) to boot from.
 - `--graphic`: Launches the vm with a graphical interface.
 - `-i`: Runs the vm in interactive mode.
 
