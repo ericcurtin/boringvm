@@ -185,12 +185,12 @@ def run_vm(image_name, cdrom, graphic):
     if cdrom:
         cmd += [ "-cdrom", cdrom ]
 
-    exec_cmd(cmd)
+    exec_cmd(cmd, True, True)
 
 def perror(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-def exec_cmd(args, stderr=True):
+def exec_cmd(args, stderr=True, daemonize=False):
     if False:
         print(*args)
 
@@ -198,6 +198,28 @@ def exec_cmd(args, stderr=True):
         # Redirecting stderr to /dev/null
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stderr.fileno())
+
+    if daemonize:
+        # Fork the process to create a daemon
+        pid = os.fork()
+        if pid > 0:
+            # Parent process, exit to allow child to run in the background
+            sys.exit(0)
+
+        # Detach the child from terminal
+        os.setsid()
+        pid = os.fork()
+        if pid > 0:
+            # Exit the second parent to fully detach
+            sys.exit(0)
+
+        # Redirect stdin, stdout, and stderr to /dev/null
+        with open(os.devnull, 'r') as devnull_in, \
+             open(os.devnull, 'a') as devnull_out:
+            os.dup2(devnull_in.fileno(), sys.stdin.fileno())
+            os.dup2(devnull_out.fileno(), sys.stdout.fileno())
+            if stderr:
+                os.dup2(devnull_out.fileno(), sys.stderr.fileno())
 
     try:
         return os.execvp(args[0], args)
