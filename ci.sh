@@ -17,7 +17,7 @@ main() {
   fi
 
   boringvm images | grep NAME
-  pipx install black
+  pipx install black flake8
   ./lint.sh
   ./tree-status.sh
 }
