@@ -8,6 +8,8 @@ main() {
     maybe_sudo="sudo"
   fi
 
+  local os
+  os="$(uname -s)"
   if [ "$os" == "Darwin" ]; then
     ./install.sh
   else

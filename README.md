@@ -76,7 +76,7 @@ Options:
 - `--graphic`: Launches the vm with a graphical interface.
 - `-i`: Runs the vm in interactive mode.
 
-#### ssh into a Rrunning vm
+#### ssh into a running vm
 ssh into a vm using its port mapping. Automatically detects the correct port based on the running vms.
 
 ```bash
@@ -90,7 +90,7 @@ Copies an ssh key to a running vm.
 boringvm ssh-copy-id <vm_name>
 ```
 
-#### Stop a Running vm
+#### Stop a running vm
 Stops a vm by killing its associated process.
 
 ```bash
@@ -118,7 +118,7 @@ By default, boringvm stores vm images in:
    boringvm create my_vm
    ```
 
-2. **Run the vm** with a graphical interface and a CD-ROM:
+2. **Run the vm** with a graphical interface and a cdrom:
    ```bash
    boringvm run my_vm --cdrom /path/to/cdrom.iso --graphic
    ```
