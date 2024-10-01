@@ -14,7 +14,7 @@ main() {
     $maybe_sudo ./install.sh
   fi
 
-  boringvm | grep NAME
+  boringvm images | grep NAME
 }
 
 main "$@"

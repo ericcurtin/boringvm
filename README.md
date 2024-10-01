@@ -29,7 +29,7 @@ curl -fsSL https://raw.githubusercontent.com/ericcurtin/boringvm/s/install.sh | 
 
 ## Requirements
 
-- Python 3.x
+- python3
 - qemu installed on the system
 - ssh utilities (`ssh`, `ssh-copy-id`)
   
@@ -65,26 +65,26 @@ boringvm create <vm_name>
 ```
 
 #### Run a vm
-Runs a specified vm. You can optionally specify whether the vm should use a CD-ROM, whether it should have a graphical interface, or whether to run interactively.
+Runs a specified vm. You can optionally specify whether the vm should use a cdrom (.iso), whether it should have a graphical interface, or whether to run interactively.
 
 ```bash
 boringvm run <vm_name> [--cdrom <path>] [--graphic] [-i]
 ```
 
 Options:
-- `--cdrom <path>`: Path to the CD-ROM image to boot from.
+- `--cdrom <path>`: Path to the cdrom image to boot from.
 - `--graphic`: Launches the vm with a graphical interface.
 - `-i`: Runs the vm in interactive mode.
 
-#### SSH into a Running vm
-SSH into a vm using its port mapping. Automatically detects the correct port based on the running vms.
+#### ssh into a Rrunning vm
+ssh into a vm using its port mapping. Automatically detects the correct port based on the running vms.
 
 ```bash
 boringvm ssh <vm_name>
 ```
 
-#### Copy SSH Key to a vm
-Copies your SSH key to a running vm.
+#### Copy ssh key to a vm
+Copies an ssh key to a running vm.
 
 ```bash
 boringvm ssh-copy-id <vm_name>
@@ -123,7 +123,7 @@ By default, boringvm stores vm images in:
    boringvm run my_vm --cdrom /path/to/cdrom.iso --graphic
    ```
 
-3. **SSH into the running vm**:
+3. **ssh into the running vm**:
    ```bash
    boringvm ssh my_vm
    ```

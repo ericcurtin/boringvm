@@ -5,7 +5,7 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - name: install bats
+      - name: Run a one-line script
         shell: bash
         run: ./ci.sh
 
