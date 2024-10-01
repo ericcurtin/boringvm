@@ -2,6 +2,7 @@
 
 from pathlib import Path
 import os
+import re
 import subprocess
 import sys
 import time
@@ -9,8 +10,25 @@ import shutil
 
 # Function to list running VMs
 def list_running_vms():
-    print("Running VMs:")
-    subprocess.run(['ps', '-ef', '|', 'grep', 'qemu'])
+    pgrep_result = subprocess.run(["pgrep", "qemu"], capture_output=True, text=True)
+    pid = pgrep_result.stdout.strip()
+    if not pid:
+        print("No qemu process found.")
+
+    ps_result = subprocess.run(["ps", "-p", pid, "-o", "args=", "-ww"], capture_output=True, text=True)
+    name_match = re.search(r'/([\w\-]+)\.qcow2', ps_result.stdout)
+    port_match = re.search(r'hostfwd=tcp::(\d+)', ps_result.stdout)
+    pses = []
+    pses.append({"name": name_match.group(1), "port": port_match.group(1)})
+    name_width = len("NAME")
+    port_width = len("PORT")
+    for ps in pses:
+        name_width = max(name_width, len(ps["name"]))
+        port_width = max(port_width, len(ps["port"]))
+
+    print(f"{'NAME':<{name_width}} {'PORT':<{port_width}}")
+    for ps in pses:
+        print(f"{ps['name']:<{name_width}} {ps['port']:<{port_width}}")
 
 
 def human_duration(d):
