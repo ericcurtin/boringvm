@@ -30,7 +30,7 @@ def ssh_vm(vm_name):
     for vm in vms:
         if vm['name'] == vm_name:
             port = vm['port']
-            print(f"Connecting to {vm_name} on port {port}...")
+            print(f"Connecting to {vm_name} on port {port}")
             exec_cmd(["ssh", "127.0.0.1", "-o", "StrictHostKeyChecking=no", "-p", port])
             return
 
@@ -42,7 +42,7 @@ def ssh_copy_id(vm_name):
     for vm in vms:
         if vm['name'] == vm_name:
             port = vm['port']
-            print(f"Copying SSH key to {vm_name} on port {port}...")
+            print(f"Copying SSH key to {vm_name} on port {port}")
             exec_cmd(["ssh-copy-id", "-p", port, "127.0.0.1"])
             return
 
@@ -138,13 +138,13 @@ def list_images():
 
 
 # Function to run a VM
-def run_vm(image_name, cdrom, graphic):
-    image_path = os.path.join(get_vm_store(), image_name)
-    if not os.path.exists(image_path):
-        print(f"Image {image_name} does not exist!")
+def run_vm(vm_name, cdrom, graphic):
+    fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
+    if not os.path.exists(fn):
+        print(f"Image {vm_name} does not exist!")
         return
 
-    print(f"Starting VM {image_name}...")
+    print(f"Starting VM {vm_name}")
     cmd = [
         "qemu-system-aarch64",
         "-device",
@@ -176,7 +176,7 @@ def run_vm(image_name, cdrom, graphic):
         "-netdev",
         "user,id=n0,net=10.0.2.0/24,hostfwd=tcp::2222-:22",
         "-drive",
-        f"file={image_name},index=0,media=disk,format=qcow2,if=virtio,id=rootdisk,snapshot=off"
+        f"file={fn},index=0,media=disk,format=qcow2,if=virtio,id=rootdisk,snapshot=off"
     ]
 
     if not graphic:
@@ -228,10 +228,10 @@ def exec_cmd(args, stderr=True, daemonize=False):
         raise
 
 # Function to create a VM image
-def create_vm(image_name):
-    image_path = os.path.join(get_vm_store(), image_name) + ".qcow2"
-    if os.path.exists(image_path):
-        print(f"Image {image_name} already exists!")
+def create_vm(vm_name):
+    fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
+    if os.path.exists(fn):
+        print(f"Image {vm_name} already exists!")
         return
 
     statvfs = os.statvfs(".")
@@ -240,30 +240,30 @@ def create_vm(image_name):
     while size * 2 < free_space:
         size *= 2
 
-    print(f"Creating new VM image {image_name} with size {size}...")
-    exec_cmd(["qemu-img", "create", "-f", "qcow2", image_path, f"{size}"])
+    print(f"Creating new VM image {vm_name} with size {size}")
+    exec_cmd(["qemu-img", "create", "-f", "qcow2", fn, f"{size}"])
 
 # Function to stop a running VM (by killing the QEMU process)
-def stop_vm(image_name):
-    print(f"Stopping VM {image_name}...")
-    result = subprocess.run(['pgrep', '-f', image_name], capture_output=True, text=True)
+def stop_vm(vm_name):
+    print(f"Stopping VM {vm_name}")
+    result = subprocess.run(['pgrep', '-f', vm_name], capture_output=True, text=True)
     if result.stdout:
         pid = result.stdout.strip()
         os.kill(int(pid), 9)
-        print(f"VM {image_name} stopped.")
+        print(f"VM {vm_name} stopped.")
         return
 
-    print(f"No running VM found with image {image_name}.")
+    print(f"No running VM found with image {vm_name}.")
 
 # Function to delete a VM image
-def delete_vm(image_name):
-    image_path = os.path.join(VM_PATH, image_name)
-    if os.path.exists(image_path):
-        print(f"Deleting VM image {image_name}...")
-        os.remove(image_path)
+def delete_vm(vm_name):
+    fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
+    if os.path.exists(fn):
+        print(f"Deleting VM image {vm_name}")
+        os.remove(fn)
         return
 
-    print(f"Image {image_name} does not exist!")
+    print(f"Image {vm_name} does not exist!")
 
 def get_vm_store():
     if os.geteuid() == 0:
@@ -298,7 +298,7 @@ def main():
         list_images()
     elif command == "run":
         if len(sys.argv) < 3:
-            print("usage: boringvm run <image_name>")
+            print("usage: boringvm run <vm_name>")
             return
 
         if "--cdrom" in sys.argv:
@@ -311,16 +311,15 @@ def main():
         else:
             graphic = False
 
-        image_name = sys.argv[2]
-        image_name = f"{get_vm_store()}/{image_name}.qcow2"
-        run_vm(image_name, cdrom, graphic)
+        vm_name = sys.argv[2]
+        run_vm(vm_name, cdrom, graphic)
     elif command == "create":
         if len(sys.argv) < 3:
-            print("usage: boringvm create <image_name>")
+            print("usage: boringvm create <vm_name>")
             return
 
-        image_name = sys.argv[2]
-        create_vm(image_name)
+        vm_name = sys.argv[2]
+        create_vm(vm_name)
     elif command == "ssh":
         if len(sys.argv) < 3:
             print("usage: boringvm ssh <vm_name>")
@@ -337,18 +336,18 @@ def main():
         ssh_copy_id(vm_name)
     elif command == "stop":
         if len(sys.argv) < 3:
-            print("usage: boringvm stop <image_name>")
+            print("usage: boringvm stop <vm_name>")
             return
 
-        image_name = sys.argv[2]
-        stop_vm(image_name)
+        vm_name = sys.argv[2]
+        stop_vm(vm_name)
     elif command == "rm":
         if len(sys.argv) < 3:
-            print("usage: boringvm rm <image_name>")
+            print("usage: boringvm rm <vm_name>")
             return
 
-        image_name = sys.argv[2]
-        delete_vm(image_name)
+        vm_name = sys.argv[2]
+        delete_vm(vm_name)
     else:
         print(f"Unknown command: {command}")
 
