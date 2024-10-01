@@ -79,15 +79,15 @@ def ssh_copy_id(vm_name):
 # Function to list running VMs
 def list_running_vms():
     pses = get_running_vms()
-    name_width = len("NAME")
-    port_width = len("PORT")
+    name_w = len("NAME")
+    port_w = len("PORT")
     for ps in pses:
-        name_width = max(name_width, len(ps["name"]))
-        port_width = max(port_width, len(ps["port"]))
+        name_w = max(name_w, len(ps["name"]))
+        port_w = max(port_w, len(ps["port"]))
 
-    print(f"{'NAME':<{name_width}} {'PORT':<{port_width}}")
+    print(f"{'NAME':<{name_w}} {'PORT':<{port_w}}")
     for ps in pses:
-        print(f"{ps['name']:<{name_width}} {ps['port']:<{port_width}}")
+        print(f"{ps['name']:<{name_w}} {ps['port']:<{port_w}}")
 
 
 def human_duration(d):
@@ -168,21 +168,19 @@ def list_images():
     vms = list_vms()
 
     # Calculate maximum width for each column
-    name_width = len("NAME")
-    modified_width = len("MODIFIED")
-    size_width = len("SIZE")
+    name_w = len("NAME")
+    mod_w = len("MODIFIED")
+    size_w = len("SIZE")
     for vm in vms:
         modified = human_duration(vm["modified"]) + " ago"
-        name_width = max(name_width, len(vm["name"]))
-        modified_width = max(modified_width, len(modified))
-        size_width = max(size_width, len(vm["size"]))
+        name_w = max(name_w, len(vm["name"]))
+        mod_w = max(mod_w, len(modified))
+        size_w = max(size_w, len(vm["size"]))
 
-    print(
-        f"{'NAME':<{name_width}} {'MODIFIED':<{modified_width}} {'SIZE':<{size_width}}"
-    )
+    print(f"{'NAME':<{name_w}} {'MODIFIED':<{mod_w}} {'SIZE':<{size_w}}")
     for vm in vms:
         print(
-            f"{vm['name']:<{name_width}} {modified:<{modified_width}} {vm['size']:<{size_width}}"
+            f"{vm['name']:<{name_w}} {modified:<{mod_w}} {vm['size']:<{size_w}}"
         )
 
 
@@ -195,6 +193,9 @@ def run_vm(vm_name, cdrom, graphic, interactive):
 
     port = find_open_port()
     print(f"Starting VM {vm_name}")
+    dir = "/opt/homebrew/share/qemu"
+    drv_o = "if=pflash,format=raw"
+    file_o = "if=virtio,format=qcow2"
     cmd = [
         "qemu-system-aarch64",
         "-device",
@@ -208,9 +209,9 @@ def run_vm(vm_name, cdrom, graphic, interactive):
         "-device",
         "usb-tablet",
         "-drive",
-        "file=/opt/homebrew/share/qemu/edk2-aarch64-code.fd,if=pflash,format=raw,unit=0,readonly=on",
+        f"file={dir}/edk2-aarch64-code.fd,{drv_o},unit=0,readonly=on",
         "-drive",
-        "file=/opt/homebrew/share/qemu/edk2-arm-vars.fd,if=pflash,format=raw,unit=1,snapshot=on,readonly=off",
+        f"file={dir}/edk2-arm-vars.fd,{drv_o},unit=1,snapshot=on,readonly=off",
         "-smp",
         str(os.cpu_count()),
         "-accel",
@@ -226,7 +227,7 @@ def run_vm(vm_name, cdrom, graphic, interactive):
         "-netdev",
         f"user,id=n0,net=10.0.2.0/24,hostfwd=tcp::{port}-:22",
         "-drive",
-        f"file={fn},index=0,media=disk,format=qcow2,if=virtio,id=rootdisk,snapshot=off",
+        f"file={fn},index=0,media=disk,{file_o},id=rootdisk,snapshot=off",
     ]
 
     if not graphic:

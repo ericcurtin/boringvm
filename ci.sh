@@ -17,6 +17,8 @@ main() {
   fi
 
   boringvm images | grep NAME
+  ./lint.sh
+  ./tree-status.sh
 }
 
 main "$@"
