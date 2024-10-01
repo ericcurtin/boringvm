@@ -17,6 +17,7 @@ main() {
   fi
 
   boringvm images | grep NAME
+  pipx install black
   ./lint.sh
   ./tree-status.sh
 }
