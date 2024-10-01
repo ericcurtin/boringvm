@@ -7,21 +7,33 @@ import subprocess
 import sys
 import time
 import shutil
+import socket
+
+def find_open_port(start_port=2222):
+    port = start_port
+    while True:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("localhost", port))
+                return port  # If successful, return the open port
+            except OSError:
+                port += 1  # If the port is in use, try the next one
 
 # Function to list running VMs and their corresponding ports
 def get_running_vms():
-    pid = qx(["pgrep", "qemu"])
-    if not pid:
-        print("No qemu process found.")
-        return []
+    pids = qx(["pgrep", "qemu"])
+    ret = []
+    if not pids:
+        return ret
 
-    ps_result = qx(["ps", "-p", pid, "-o", "args=", "-ww"])
-    name_match = re.search(r'/([\w\-]+)\.qcow2', ps_result)
-    port_match = re.search(r'hostfwd=tcp::(\d+)', ps_result)
-    if name_match and port_match:
-        return [{"name": name_match.group(1), "port": port_match.group(1)}]
+    for pid in pids.splitlines():
+        ps_result = qx(["ps", "-p", pid, "-o", "args=", "-ww"])
+        name_match = re.search(r'/([\w\-]+)\.qcow2', ps_result)
+        port_match = re.search(r'hostfwd=tcp::(\d+)', ps_result)
+        if name_match and port_match:
+            ret.append({"name": name_match.group(1), "port": port_match.group(1)})
 
-    return []
+    return ret
 
 # Function to SSH into a VM using the correct port
 def ssh_vm(vm_name):
@@ -157,6 +169,7 @@ def run_vm(vm_name, cdrom, graphic, interactive):
         print(f"Image {vm_name} does not exist!")
         return
 
+    port = find_open_port()
     print(f"Starting VM {vm_name}")
     cmd = [
         "qemu-system-aarch64",
@@ -187,7 +200,7 @@ def run_vm(vm_name, cdrom, graphic, interactive):
         "-device",
         "virtio-net-pci,netdev=n0,mac=FE:40:64:26:D6:FF",
         "-netdev",
-        "user,id=n0,net=10.0.2.0/24,hostfwd=tcp::2222-:22",
+        f"user,id=n0,net=10.0.2.0/24,hostfwd=tcp::{port}-:22",
         "-drive",
         f"file={fn},index=0,media=disk,format=qcow2,if=virtio,id=rootdisk,snapshot=off"
     ]
