@@ -1,0 +1,19 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install bats
+        shell: bash
+        run: ./ci.sh
+
+  macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run a one-line script
+        shell: bash
+        run: ./ci.sh
+
