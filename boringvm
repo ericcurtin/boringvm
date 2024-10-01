@@ -35,29 +35,39 @@ def get_running_vms():
 
     return ret
 
+# Helper function to get destination and port based on VM name
+def get_dest_and_port(vm_name):
+    vms = get_running_vms()
+    if "@" in vm_name:
+        user, host = vm_name.split('@')
+        dest = f"{user}@127.0.0.1"
+    else:
+        user, host = None, vm_name
+        dest = "127.0.0.1"
+
+    for vm in vms:
+        if vm['name'] == host:
+            return dest, vm['port']
+
+    return None, None
+
 # Function to SSH into a VM using the correct port
 def ssh_vm(vm_name):
-    vms = get_running_vms()
-    for vm in vms:
-        if vm['name'] == vm_name:
-            port = vm['port']
-            print(f"Connecting to {vm_name} on port {port}")
-            exec_cmd(["ssh", "127.0.0.1", "-o", "StrictHostKeyChecking=no", "-p", port])
-            return
-
-    print(f"No running VM found with name {vm_name}.")
+    dest, port = get_dest_and_port(vm_name)
+    if dest and port:
+        print(f"Connecting to {vm_name} on port {port}")
+        exec_cmd(["ssh", dest, "-o", "StrictHostKeyChecking=no", "-p", port])
+    else:
+        print(f"No running VM found with name {vm_name}.")
 
 # Function to copy SSH key to the VM using the correct port
 def ssh_copy_id(vm_name):
-    vms = get_running_vms()
-    for vm in vms:
-        if vm['name'] == vm_name:
-            port = vm['port']
-            print(f"Copying SSH key to {vm_name} on port {port}")
-            exec_cmd(["ssh-copy-id", "-p", port, "127.0.0.1"])
-            return
-
-    print(f"No running VM found with name {vm_name}.")
+    dest, port = get_dest_and_port(vm_name)
+    if dest and port:
+        print(f"Copying SSH key to {vm_name} on port {port}")
+        exec_cmd(["ssh-copy-id", "-p", port, dest])
+    else:
+        print(f"No running VM found with name {vm_name}.")
 
 # Function to list running VMs
 def list_running_vms():
