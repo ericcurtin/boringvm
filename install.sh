@@ -49,7 +49,7 @@ main() {
   local from="$TMP/$from"
   download
 
-  install -D -m755 "$from" "$bindir/"
+  install -m755 "$from" "$bindir/"
 }
 
 main "$@"
