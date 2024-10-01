@@ -20,14 +20,19 @@ main() {
 
   local os
   os="$(uname -s)"
-  if [ "$os" != "Linux" ]; then
-    echo "This script is intended to run on Linux only"
-    return 1
-  fi
-
-  if [ "$EUID" -ne 0 ]; then
-    echo "This script is intended to run as root only"
-    return 2
+  if [ "$os" = "Darwin" ]; then
+    if [ "$EUID" -eq 0 ]; then
+      echo "This script is intended to run as non-root on macOS"
+      return 2
+    fi
+  elif [ "$os" = "Linux" ]; then
+    if [ "$EUID" -ne 0 ]; then
+      echo "This script is intended to run as root on Linux"
+      return 3
+    fi
+  else
+    echo "This script is intended to run on Linux and macOS only"
+    return 4
   fi
 
   local bindir
