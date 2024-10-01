@@ -8,18 +8,49 @@ import sys
 import time
 import shutil
 
-# Function to list running VMs
-def list_running_vms():
+# Function to list running VMs and their corresponding ports
+def get_running_vms():
     pgrep_result = subprocess.run(["pgrep", "qemu"], capture_output=True, text=True)
     pid = pgrep_result.stdout.strip()
     if not pid:
         print("No qemu process found.")
+        return []
 
     ps_result = subprocess.run(["ps", "-p", pid, "-o", "args=", "-ww"], capture_output=True, text=True)
     name_match = re.search(r'/([\w\-]+)\.qcow2', ps_result.stdout)
     port_match = re.search(r'hostfwd=tcp::(\d+)', ps_result.stdout)
-    pses = []
-    pses.append({"name": name_match.group(1), "port": port_match.group(1)})
+    if name_match and port_match:
+        return [{"name": name_match.group(1), "port": port_match.group(1)}]
+
+    return []
+
+# Function to SSH into a VM using the correct port
+def ssh_vm(vm_name):
+    vms = get_running_vms()
+    for vm in vms:
+        if vm['name'] == vm_name:
+            port = vm['port']
+            print(f"Connecting to {vm_name} on port {port}...")
+            exec_cmd(["ssh", "127.0.0.1", "-o", "StrictHostKeyChecking=no", "-p", port])
+            return
+
+    print(f"No running VM found with name {vm_name}.")
+
+# Function to copy SSH key to the VM using the correct port
+def ssh_copy_id(vm_name):
+    vms = get_running_vms()
+    for vm in vms:
+        if vm['name'] == vm_name:
+            port = vm['port']
+            print(f"Copying SSH key to {vm_name} on port {port}...")
+            exec_cmd(["ssh-copy-id", "-p", port, "127.0.0.1"])
+            return
+
+    print(f"No running VM found with name {vm_name}.")
+
+# Function to list running VMs
+def list_running_vms():
+    pses = get_running_vms()
     name_width = len("NAME")
     port_width = len("PORT")
     for ps in pses:
@@ -268,6 +299,20 @@ def main():
 
         image_name = sys.argv[2]
         create_vm(image_name)
+    elif command == "ssh":
+        if len(sys.argv) < 3:
+            print("usage: boringvm ssh <vm_name>")
+            return
+
+        vm_name = sys.argv[2]
+        ssh_vm(vm_name)
+    elif command == "ssh-copy-id":
+        if len(sys.argv) < 3:
+            print("usage: boringvm ssh-copy-id <vm_name>")
+            return
+
+        vm_name = sys.argv[2]
+        ssh_copy_id(vm_name)
     elif command == "stop":
         if len(sys.argv) < 3:
             print("usage: boringvm stop <image_name>")
