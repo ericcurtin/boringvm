@@ -16,12 +16,11 @@ def find_open_port(start_port=2222):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
                 s.bind(("localhost", port))
-                return port  # If successful, return the open port
+                return port  # if successful, return the open port
             except OSError:
-                port += 1  # If the port is in use, try the next one
+                port += 1  # if the port is in use, try the next one
 
 
-# Function to list running vms and their corresponding ports
 def get_running_vms():
     pids = qx(["pgrep", "qemu"])
     ret = []
@@ -40,7 +39,6 @@ def get_running_vms():
     return ret
 
 
-# Helper function to get destination and port based on vm name
 def get_dest_and_port(vm_name):
     vms = get_running_vms()
     if "@" in vm_name:
@@ -57,7 +55,6 @@ def get_dest_and_port(vm_name):
     return None, None
 
 
-# Function to ssh into a vm using the correct port
 def ssh_vm(vm_name):
     dest, port = get_dest_and_port(vm_name)
     if dest and port:
@@ -67,7 +64,6 @@ def ssh_vm(vm_name):
         print(f"No running vm found with name {vm_name}.")
 
 
-# Function to copy ssh key to the vm using the correct port
 def ssh_copy_id(vm_name):
     dest, port = get_dest_and_port(vm_name)
     if dest and port:
@@ -77,7 +73,6 @@ def ssh_copy_id(vm_name):
         print(f"No running vm found with name {vm_name}.")
 
 
-# Function to list running vms
 def list_running_vms():
     pses = get_running_vms()
     name_w = len("NAME")
@@ -150,7 +145,7 @@ def list_vms():
     os.chdir(get_vm_store())
     vms = []
 
-    # Collect vm data
+    # collect vm data
     for path in list_files_by_modification():
         name = str(path)
         file_epoch = path.lstat().st_mtime
@@ -158,7 +153,7 @@ def list_vms():
         size = get_size(path)
         name = name[:-6]
 
-        # Store data for later use
+        # store data for later use
         vms.append({"name": name, "modified": modified, "size": size})
 
     os.chdir(mycwd)
@@ -168,7 +163,7 @@ def list_vms():
 def list_images():
     vms = list_vms()
 
-    # Calculate maximum width for each column
+    # calculate maximum width for each column
     name_w = len("NAME")
     mod_w = len("MODIFIED")
     size_w = len("SIZE")
@@ -185,7 +180,6 @@ def list_images():
         )
 
 
-# Function to check if the VM image exists
 def vm_image_exists(vm_name):
     vm_fn = get_vm_fn(vm_name)
     if not os.path.exists(vm_fn):
@@ -195,12 +189,10 @@ def vm_image_exists(vm_name):
     return True
 
 
-# Function to get VM disk path
 def get_vm_fn(vm_name):
     return os.path.join(get_vm_store(), vm_name) + ".qcow2"
 
 
-# Function to find and prepare VM drive options
 def prepare_drive_options(vm_fn, cdrom=None):
     d = "/opt/homebrew/share/qemu"
     drv_o = "if=pflash,format=raw"
@@ -222,7 +214,6 @@ def prepare_drive_options(vm_fn, cdrom=None):
     return drives
 
 
-# Function to prepare CPU and memory settings
 def prepare_cpu_memory_options():
     cpu_options = [
         "-smp",
@@ -230,10 +221,10 @@ def prepare_cpu_memory_options():
         "-m",
         highest_power_of_2(get_total_ram_macos()),
     ]
+
     return cpu_options
 
 
-# Function to prepare network settings
 def prepare_network_options():
     port = find_open_port()
     net_options = [
@@ -242,10 +233,10 @@ def prepare_network_options():
         "-netdev",
         f"user,id=n0,net=10.0.2.0/24,hostfwd=tcp::{port}-:22",
     ]
+
     return net_options
 
 
-# Function to prepare graphic/display options
 def prepare_graphic_options(graphic):
     if graphic:
         return [
@@ -260,11 +251,10 @@ def prepare_graphic_options(graphic):
             "-device",
             "usb-tablet",
         ]
-    else:
-        return ["-nographic"]
+
+    return ["-nographic"]
 
 
-# Function to prepare the full QEMU command
 def prepare_qemu_command(vm_name, vm_fn, cdrom, graphic):
     cmd = [
         "qemu-system-aarch64",
@@ -284,7 +274,6 @@ def prepare_qemu_command(vm_name, vm_fn, cdrom, graphic):
     return cmd
 
 
-# Function to run a vm
 def run_vm(vm_name, cdrom=None, graphic=True, interactive=False):
     vm_fn = get_vm_fn(vm_name)
 
@@ -292,11 +281,7 @@ def run_vm(vm_name, cdrom=None, graphic=True, interactive=False):
         return
 
     print(f"Starting VM {vm_name}")
-
-    # Prepare the QEMU command
     cmd = prepare_qemu_command(vm_name, vm_fn, cdrom, graphic)
-
-    # Execute the command
     exec_cmd(cmd, True, not interactive)
 
 
@@ -324,25 +309,25 @@ def exec_cmd(args, stderr=True, daemonize=False):
         print(*args)
 
     if not stderr:
-        # Redirecting stderr to /dev/null
+        # redirecting stderr to /dev/null
         with open(os.devnull, "w") as devnull:
             os.dup2(devnull.fileno(), sys.stderr.fileno())
 
     if daemonize:
-        # Fork the process to create a daemon
+        # fork the process to create a daemon
         pid = os.fork()
         if pid > 0:
-            # Parent process, exit to allow child to run in the background
+            # parent process, exit to allow child to run in the background
             sys.exit(0)
 
-        # Detach the child from terminal
+        # detach the child from terminal
         os.setsid()
         pid = os.fork()
         if pid > 0:
-            # Exit the second parent to fully detach
+            # exit the second parent to fully detach
             sys.exit(0)
 
-        # Redirect stdin, stdout, and stderr to /dev/null
+        # redirect stdin, stdout, and stderr to /dev/null
         with open(os.devnull, "r") as devnull_in, open(
             os.devnull, "a"
         ) as devnull_out:
@@ -358,7 +343,6 @@ def exec_cmd(args, stderr=True, daemonize=False):
         raise
 
 
-# Function to create a vm image
 def create_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
     if os.path.exists(fn):
@@ -375,7 +359,6 @@ def create_vm(vm_name):
     exec_cmd(["qemu-img", "create", "-f", "qcow2", fn, f"{size}"])
 
 
-# Function to stop a running vm (by killing the QEMU process)
 def stop_vm(vm_name):
     print(f"Stopping vm {vm_name}")
     result = qx(["pgrep", "-f", vm_name])
@@ -388,7 +371,6 @@ def stop_vm(vm_name):
     print(f"No running vm found with image {vm_name}.")
 
 
-# Function to delete a vm image
 def delete_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
     if os.path.exists(fn):
