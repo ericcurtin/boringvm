@@ -1,6 +1,6 @@
 # boringvm
 
-boringvm is a lightweight, command-line-based virtual machine manager designed for managing qemu virtual machines. This tool allows users to create, run, stop, ssh into, and manage vm images and processes with minimal configuration.
+boringvm is a lightweight, command-line-based virtual machine manager designed for managing qemu virtual machines. The tool is designed to simplify VM management tasks for users.
 
 ## Install
 
@@ -20,18 +20,17 @@ curl -fsSL https://raw.githubusercontent.com/ericcurtin/boringvm/s/install.sh | 
 
 ## Features
 
-- **create** a new vms image
-- **run** a vms with various configurations
-- **list** running vms and images
-- **ssh** into running vms
-- **stop** or **delete** a vm
-- **copy ssh key** to a vm
+- create and manage vm images: easily create or delete virtual machine images.
+- run vms with port forwarding: automatically assign available ports for ssh access and forward them to vms.
+- list running vms: display currently running vms along with their corresponding forwarded ports.
+- ssh access: ssh into running vms or copy ssh keys to them.
+- graphical mode support: optionally run vms with graphical display support.
 
 ## Requirements
 
 - python3
-- qemu installed on the system
-- ssh utilities (`ssh`, `ssh-copy-id`)
+- qemu
+- Linux or macOS
   
 ## Usage
 
@@ -41,68 +40,16 @@ The `boringvm` tool is operated via the command line. The general usage pattern 
 boringvm <command> [options]
 ```
 
-### Available Commands
+### Commands
 
-#### List Running vms
-Lists all currently running vms and the ports they are mapped to.
-
-```bash
-boringvm ps
-```
-
-#### List vm Images
-Lists all available vm images, their modification times, and sizes.
-
-```bash
-boringvm images
-```
-
-#### Create a New vm
-Creates a new vm image with a given name.
-
-```bash
-boringvm create <vm_name>
-```
-
-#### Run a vm
-Runs a specified vm. You can optionally specify whether the vm should use a cdrom (.iso), whether it should have a graphical interface, or whether to run interactively.
-
-```bash
-boringvm run <vm_name> [--cdrom <path>] [--graphic] [-i]
-```
-
-Options:
-- `--cdrom <path>`: Path to the cdrom image (.iso) to boot from.
-- `--graphic`: Launches the vm with a graphical interface.
-- `-i`: Runs the vm in interactive mode.
-
-#### ssh into a running vm
-ssh into a vm using its port mapping. Automatically detects the correct port based on the running vms.
-
-```bash
-boringvm ssh <vm_name>
-```
-
-#### Copy ssh key to a vm
-Copies an ssh key to a running vm.
-
-```bash
-boringvm ssh-copy-id <vm_name>
-```
-
-#### Stop a running vm
-Stops a vm by killing its associated process.
-
-```bash
-boringvm stop <vm_name>
-```
-
-#### Delete a vm
-Deletes a vm image from the system.
-
-```bash
-boringvm rm <vm_name>
-```
+- `create`: Create a new virtual machine image.
+- `run`: Start a virtual machine.
+- `ps`: List all running virtual machines and their forwarded ports.
+- `images`: List available VM images.
+- `ssh`: SSH into a running virtual machine.
+- `ssh-copy-id`: Copy the SSH key to a virtual machine.
+- `stop`: Stop a running virtual machine.
+- `rm`: Delete a VM image.
 
 ## Configuration
 
