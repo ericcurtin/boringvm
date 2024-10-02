@@ -363,17 +363,15 @@ def highest_power_of_2(n):
     return f"{power}B"
 
 
-def main():
-    parser = argparse.ArgumentParser(description="manage boring vms")
-    subparsers = parser.add_subparsers(dest="command", required=True)
-
-    # ps command
+def add_ps_parser(subparsers):
     subparsers.add_parser("ps", help="list running vms")
 
-    # images command
+
+def add_images_parser(subparsers):
     subparsers.add_parser("images", help="list available vm images")
 
-    # run command
+
+def add_run_parser(subparsers):
     run_parser = subparsers.add_parser("run", help="run a vm")
     run_parser.add_argument("vm_name", help="name of the vm to run")
     run_parser.add_argument("--cdrom", help="attach a cdrom image (.iso)")
@@ -384,15 +382,18 @@ def main():
         "-i", "--interactive", action="store_true", help="interactive mode"
     )
 
-    # create command
+
+def add_create_parser(subparsers):
     create_parser = subparsers.add_parser("create", help="create a vm image")
     create_parser.add_argument("vm_name", help="name of the vm to create")
 
-    # ssh command
+
+def add_ssh_parser(subparsers):
     ssh_parser = subparsers.add_parser("ssh", help="ssh into a running vm")
     ssh_parser.add_argument("vm_name", help="name of the vm to ssh into")
 
-    # ssh-copy-id command
+
+def add_ssh_copy_id_parser(subparsers):
     ssh_copy_id_parser = subparsers.add_parser(
         "ssh-copy-id", help="copy ssh key to a running vm"
     )
@@ -400,18 +401,30 @@ def main():
         "vm_name", help="name of the vm to copy ssh key into"
     )
 
-    # stop command
+
+def add_stop_parser(subparsers):
     stop_parser = subparsers.add_parser("stop", help="stop a running vm")
     stop_parser.add_argument("vm_name", help="name of the vm to stop")
 
-    # rm command
+
+def add_rm_parser(subparsers):
     rm_parser = subparsers.add_parser("rm", help="remove a vm image")
     rm_parser.add_argument("vm_name", help="name of the vm image to remove")
 
+
+def main():
+    parser = argparse.ArgumentParser(description="manage boring vms")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    add_ps_parser(subparsers)
+    add_images_parser(subparsers)
+    add_run_parser(subparsers)
+    add_create_parser(subparsers)
+    add_ssh_parser(subparsers)
+    add_ssh_copy_id_parser(subparsers)
+    add_stop_parser(subparsers)
+    add_rm_parser(subparsers)
     args = parser.parse_args()
-
     mkdir()
-
     if args.command == "ps":
         list_running_vms()
     elif args.command == "images":
