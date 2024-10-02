@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 
+import argparse
 from pathlib import Path
 import os
 import re
@@ -20,7 +21,7 @@ def find_open_port(start_port=2222):
                 port += 1  # If the port is in use, try the next one
 
 
-# Function to list running VMs and their corresponding ports
+# Function to list running vms and their corresponding ports
 def get_running_vms():
     pids = qx(["pgrep", "qemu"])
     ret = []
@@ -39,7 +40,7 @@ def get_running_vms():
     return ret
 
 
-# Helper function to get destination and port based on VM name
+# Helper function to get destination and port based on vm name
 def get_dest_and_port(vm_name):
     vms = get_running_vms()
     if "@" in vm_name:
@@ -56,27 +57,27 @@ def get_dest_and_port(vm_name):
     return None, None
 
 
-# Function to SSH into a VM using the correct port
+# Function to ssh into a vm using the correct port
 def ssh_vm(vm_name):
     dest, port = get_dest_and_port(vm_name)
     if dest and port:
         print(f"Connecting to {vm_name} on port {port}")
         exec_cmd(["ssh", dest, "-o", "StrictHostKeyChecking=no", "-p", port])
     else:
-        print(f"No running VM found with name {vm_name}.")
+        print(f"No running vm found with name {vm_name}.")
 
 
-# Function to copy SSH key to the VM using the correct port
+# Function to copy ssh key to the vm using the correct port
 def ssh_copy_id(vm_name):
     dest, port = get_dest_and_port(vm_name)
     if dest and port:
-        print(f"Copying SSH key to {vm_name} on port {port}")
+        print(f"Copying ssh key to {vm_name} on port {port}")
         exec_cmd(["ssh-copy-id", "-p", port, dest])
     else:
-        print(f"No running VM found with name {vm_name}.")
+        print(f"No running vm found with name {vm_name}.")
 
 
-# Function to list running VMs
+# Function to list running vms
 def list_running_vms():
     pses = get_running_vms()
     name_w = len("NAME")
@@ -184,7 +185,7 @@ def list_images():
         )
 
 
-# Function to run a VM
+# Function to run a vm
 def run_vm(vm_name, cdrom, graphic, interactive):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
     if not os.path.exists(fn):
@@ -192,7 +193,7 @@ def run_vm(vm_name, cdrom, graphic, interactive):
         return
 
     port = find_open_port()
-    print(f"Starting VM {vm_name}")
+    print(f"Starting vm {vm_name}")
     dir = "/opt/homebrew/share/qemu"
     drv_o = "if=pflash,format=raw"
     file_o = "if=virtio,format=qcow2"
@@ -297,7 +298,7 @@ def exec_cmd(args, stderr=True, daemonize=False):
         raise
 
 
-# Function to create a VM image
+# Function to create a vm image
 def create_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
     if os.path.exists(fn):
@@ -310,28 +311,28 @@ def create_vm(vm_name):
     while size * 2 < free_space:
         size *= 2
 
-    print(f"Creating new VM image {vm_name} with size {size}")
+    print(f"Creating new vm image {vm_name} with size {size}")
     exec_cmd(["qemu-img", "create", "-f", "qcow2", fn, f"{size}"])
 
 
-# Function to stop a running VM (by killing the QEMU process)
+# Function to stop a running vm (by killing the QEMU process)
 def stop_vm(vm_name):
-    print(f"Stopping VM {vm_name}")
+    print(f"Stopping vm {vm_name}")
     result = qx(["pgrep", "-f", vm_name])
     if result:
         pid = result
         os.kill(int(pid), 9)
-        print(f"VM {vm_name} stopped.")
+        print(f"vm {vm_name} stopped.")
         return
 
-    print(f"No running VM found with image {vm_name}.")
+    print(f"No running vm found with image {vm_name}.")
 
 
-# Function to delete a VM image
+# Function to delete a vm image
 def delete_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
     if os.path.exists(fn):
-        print(f"Deleting VM image {vm_name}")
+        print(f"Deleting vm image {vm_name}")
         os.remove(fn)
         return
 
@@ -363,75 +364,72 @@ def highest_power_of_2(n):
 
 
 def main():
-    if len(sys.argv) < 2:
-        print("usage: boringvm <command> [<args>]")
-        return
+    parser = argparse.ArgumentParser(description="manage boring vms")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    # ps command
+    subparsers.add_parser("ps", help="list running vms")
+
+    # images command
+    subparsers.add_parser("images", help="list available vm images")
+
+    # run command
+    run_parser = subparsers.add_parser("run", help="run a vm")
+    run_parser.add_argument("vm_name", help="name of the vm to run")
+    run_parser.add_argument("--cdrom", help="attach a cdrom image (.iso)")
+    run_parser.add_argument(
+        "--graphic", action="store_true", help="enable graphic mode"
+    )
+    run_parser.add_argument(
+        "-i", "--interactive", action="store_true", help="interactive mode"
+    )
+
+    # create command
+    create_parser = subparsers.add_parser("create", help="create a vm image")
+    create_parser.add_argument("vm_name", help="name of the vm to create")
+
+    # ssh command
+    ssh_parser = subparsers.add_parser("ssh", help="ssh into a running vm")
+    ssh_parser.add_argument("vm_name", help="name of the vm to ssh into")
+
+    # ssh-copy-id command
+    ssh_copy_id_parser = subparsers.add_parser(
+        "ssh-copy-id", help="copy ssh key to a running vm"
+    )
+    ssh_copy_id_parser.add_argument(
+        "vm_name", help="name of the vm to copy ssh key into"
+    )
+
+    # stop command
+    stop_parser = subparsers.add_parser("stop", help="stop a running vm")
+    stop_parser.add_argument("vm_name", help="name of the vm to stop")
+
+    # rm command
+    rm_parser = subparsers.add_parser("rm", help="remove a vm image")
+    rm_parser.add_argument("vm_name", help="name of the vm image to remove")
+
+    args = parser.parse_args()
 
     mkdir()
-    command = sys.argv[1]
-    if command == "ps":
+
+    if args.command == "ps":
         list_running_vms()
-    elif command == "images":
+    elif args.command == "images":
         list_images()
-    elif command == "run":
-        if len(sys.argv) < 3:
-            print("usage: boringvm run <vm_name>")
-            return
-
-        if "--cdrom" in sys.argv:
-            cdrom = sys.argv[sys.argv.index("--cdrom") + 1]
-        else:
-            cdrom = False
-
-        if "--graphic" in sys.argv:
-            graphic = True
-        else:
-            graphic = False
-
-        if "-i" in sys.argv:
-            interactive = True
-        else:
-            interactive = False
-
-        vm_name = sys.argv[2]
-        run_vm(vm_name, cdrom, graphic, interactive)
-    elif command == "create":
-        if len(sys.argv) < 3:
-            print("usage: boringvm create <vm_name>")
-            return
-
-        vm_name = sys.argv[2]
-        create_vm(vm_name)
-    elif command == "ssh":
-        if len(sys.argv) < 3:
-            print("usage: boringvm ssh <vm_name>")
-            return
-
-        vm_name = sys.argv[2]
-        ssh_vm(vm_name)
-    elif command == "ssh-copy-id":
-        if len(sys.argv) < 3:
-            print("usage: boringvm ssh-copy-id <vm_name>")
-            return
-
-        vm_name = sys.argv[2]
-        ssh_copy_id(vm_name)
-    elif command == "stop":
-        if len(sys.argv) < 3:
-            print("usage: boringvm stop <vm_name>")
-            return
-
-        vm_name = sys.argv[2]
-        stop_vm(vm_name)
-    elif command == "rm":
-        if len(sys.argv) < 3:
-            print("usage: boringvm rm <vm_name>")
-            return
-
-        vm_name = sys.argv[2]
-        delete_vm(vm_name)
+    elif args.command == "run":
+        run_vm(args.vm_name, args.cdrom, args.graphic, args.interactive)
+    elif args.command == "create":
+        create_vm(args.vm_name)
+    elif args.command == "ssh":
+        ssh_vm(args.vm_name)
+    elif args.command == "ssh-copy-id":
+        ssh_copy_id(args.vm_name)
+    elif args.command == "stop":
+        stop_vm(args.vm_name)
+    elif args.command == "rm":
+        delete_vm(args.vm_name)
     else:
-        print(f"Unknown command: {command}")
+        print(f"Unknown command: {args.command}")
 
 
 if __name__ == "__main__":
