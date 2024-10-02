@@ -56,7 +56,7 @@ boringvm <command> [options]
 By default, boringvm stores vm images in:
 
 - `/var/lib/boringvm/vms` (for root users)
-- `~/.local/share/boringvm/vms` (for regular users)
+- `~/.local/share/boringvm/vms` (for non-root users)
 
 ## Example Usage
 
