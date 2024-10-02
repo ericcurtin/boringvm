@@ -185,58 +185,118 @@ def list_images():
         )
 
 
-# Function to run a vm
-def run_vm(vm_name, cdrom, graphic, interactive):
-    fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
-    if not os.path.exists(fn):
+# Function to check if the VM image exists
+def vm_image_exists(vm_name):
+    vm_fn = get_vm_fn(vm_name)
+    if not os.path.exists(vm_fn):
         print(f"Image {vm_name} does not exist!")
-        return
+        return False
 
-    port = find_open_port()
-    print(f"Starting vm {vm_name}")
-    dir = "/opt/homebrew/share/qemu"
+    return True
+
+
+# Function to get VM disk path
+def get_vm_fn(vm_name):
+    return os.path.join(get_vm_store(), vm_name) + ".qcow2"
+
+
+# Function to find and prepare VM drive options
+def prepare_drive_options(vm_fn, cdrom=None):
+    d = "/opt/homebrew/share/qemu"
     drv_o = "if=pflash,format=raw"
     file_o = "if=virtio,format=qcow2"
-    cmd = [
-        "qemu-system-aarch64",
-        "-device",
-        "virtio-gpu-pci",
-        "-display",
-        "default,show-cursor=on",
-        "-device",
-        "qemu-xhci",
-        "-device",
-        "usb-kbd",
-        "-device",
-        "usb-tablet",
+    r = "readonly"
+    s = "snapshot"
+    drives = [
         "-drive",
-        f"file={dir}/edk2-aarch64-code.fd,{drv_o},unit=0,readonly=on",
+        f"file={d}/edk2-aarch64-code.fd,{drv_o},unit=0,{r}=on",
         "-drive",
-        f"file={dir}/edk2-arm-vars.fd,{drv_o},unit=1,snapshot=on,readonly=off",
+        f"file={d}/edk2-arm-vars.fd,{drv_o},unit=1,{s}=on,{r}=off",
+        "-drive",
+        f"file={vm_fn},index=0,media=disk,{file_o},id=rootdisk,{s}=off",
+    ]
+
+    if cdrom:
+        drives.append("-cdrom", cdrom)
+
+    return drives
+
+
+# Function to prepare CPU and memory settings
+def prepare_cpu_memory_options():
+    cpu_options = [
         "-smp",
         str(os.cpu_count()),
-        "-accel",
-        "hvf",
         "-m",
         highest_power_of_2(get_total_ram_macos()),
-        "-machine",
-        "virt",
-        "-cpu",
-        "host",
+    ]
+    return cpu_options
+
+
+# Function to prepare network settings
+def prepare_network_options():
+    port = find_open_port()
+    net_options = [
         "-device",
         "virtio-net-pci,netdev=n0,mac=FE:40:64:26:D6:FF",
         "-netdev",
         f"user,id=n0,net=10.0.2.0/24,hostfwd=tcp::{port}-:22",
-        "-drive",
-        f"file={fn},index=0,media=disk,{file_o},id=rootdisk,snapshot=off",
+    ]
+    return net_options
+
+
+# Function to prepare graphic/display options
+def prepare_graphic_options(graphic):
+    if graphic:
+        return [
+            "-device",
+            "virtio-gpu-pci",
+            "-display",
+            "default,show-cursor=on",
+            "-device",
+            "qemu-xhci",
+            "-device",
+            "usb-kbd",
+            "-device",
+            "usb-tablet",
+        ]
+    else:
+        return ["-nographic"]
+
+
+# Function to prepare the full QEMU command
+def prepare_qemu_command(vm_name, vm_fn, cdrom, graphic):
+    cmd = [
+        "qemu-system-aarch64",
+        "-machine",
+        "virt",
+        "-cpu",
+        "host",
+        "-accel",
+        "hvf",
     ]
 
-    if not graphic:
-        cmd += ["-nographic"]
+    cmd += prepare_drive_options(vm_fn, cdrom)
+    cmd += prepare_cpu_memory_options()
+    cmd += prepare_network_options()
+    cmd += prepare_graphic_options(graphic)
 
-    if cdrom:
-        cmd += ["-cdrom", cdrom]
+    return cmd
 
+
+# Function to run a vm
+def run_vm(vm_name, cdrom=None, graphic=True, interactive=False):
+    vm_fn = get_vm_fn(vm_name)
+
+    if not vm_image_exists(vm_name):
+        return
+
+    print(f"Starting VM {vm_name}")
+
+    # Prepare the QEMU command
+    cmd = prepare_qemu_command(vm_name, vm_fn, cdrom, graphic)
+
+    # Execute the command
     exec_cmd(cmd, True, not interactive)
 
 
