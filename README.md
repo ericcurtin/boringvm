@@ -75,15 +75,5 @@ By default, boringvm stores vm images in:
    boringvm ssh my_vm
    ```
 
-4. **Stop the vm**:
-   ```bash
-   boringvm stop my_vm
-   ```
-
-5. **Delete the vm image**:
-   ```bash
-   boringvm rm my_vm
-   ```
-
 Enjoy using boringvm to manage your virtual machines with ease!
 
