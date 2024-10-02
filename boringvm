@@ -57,20 +57,20 @@ def get_dest_and_port(vm_name):
 
 def ssh_vm(vm_name):
     dest, port = get_dest_and_port(vm_name)
-    if dest and port:
-        print(f"Connecting to {vm_name} on port {port}")
-        exec_cmd(["ssh", dest, "-o", "StrictHostKeyChecking=no", "-p", port])
-    else:
-        print(f"No running vm found with name {vm_name}.")
+    if not dest:
+        return print(f"No running vm found with name {vm_name}.")
+
+    print(f"Connecting to {vm_name} on port {port}")
+    return exec_cmd(["ssh", dest, "-o", "StrictHostKeyChecking=no", "-p", port])
 
 
 def ssh_copy_id(vm_name):
     dest, port = get_dest_and_port(vm_name)
-    if dest and port:
-        print(f"Copying ssh key to {vm_name} on port {port}")
-        exec_cmd(["ssh-copy-id", "-p", port, dest])
-    else:
-        print(f"No running vm found with name {vm_name}.")
+    if not dest:
+        return print(f"No running vm found with name {vm_name}.")
+
+    print(f"Copying ssh key to {vm_name} on port {port}")
+    return exec_cmd(["ssh-copy-id", "-p", port, dest])
 
 
 def list_running_vms():
@@ -115,8 +115,8 @@ def human_duration(d):
         return f"{d // 2419200} months"
     elif d < 63072000:
         return "1 year"
-    else:
-        return f"{d // 31536000} years"
+
+    return f"{d // 31536000} years"
 
 
 def list_files_by_modification():
@@ -282,7 +282,7 @@ def run_vm(vm_name, cdrom=None, graphic=True, interactive=False):
 
     print(f"Starting VM {vm_name}")
     cmd = prepare_qemu_command(vm_name, vm_fn, cdrom, graphic)
-    exec_cmd(cmd, True, not interactive)
+    return exec_cmd(cmd, True, not interactive)
 
 
 def perror(*args, **kwargs):
@@ -356,7 +356,7 @@ def create_vm(vm_name):
         size *= 2
 
     print(f"Creating new vm image {vm_name} with size {size}")
-    exec_cmd(["qemu-img", "create", "-f", "qcow2", fn, f"{size}"])
+    return exec_cmd(["qemu-img", "create", "-f", "qcow2", fn, f"{size}"])
 
 
 def stop_vm(vm_name):
