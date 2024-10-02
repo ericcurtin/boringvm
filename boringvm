@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import os
 import re
+import signal
 import subprocess
 import sys
 import time
@@ -33,7 +34,11 @@ def get_running_vms():
         port_match = re.search(r"hostfwd=tcp::(\d+)", ps_result)
         if name_match and port_match:
             ret.append(
-                {"name": name_match.group(1), "port": port_match.group(1)}
+                {
+                    "name": name_match.group(1),
+                    "port": port_match.group(1),
+                    "pid": pid,
+                }
             )
 
     return ret
@@ -77,13 +82,20 @@ def list_running_vms():
     pses = get_running_vms()
     name_w = len("NAME")
     port_w = len("PORT")
+    pid_w = len("PID")
     for ps in pses:
         name_w = max(name_w, len(ps["name"]))
         port_w = max(port_w, len(ps["port"]))
+        pid_w = max(pid_w, len(ps["pid"]))
 
-    print(f"{'NAME':<{name_w}} {'PORT':<{port_w}}")
+    print(f"{'NAME':<{name_w}} {'PORT':<{port_w}} {'PID':<{pid_w}}")
     for ps in pses:
-        print(f"{ps['name']:<{name_w}} {ps['port']:<{port_w}}")
+        row = (
+            f"{ps['name']:<{name_w}} "
+            f"{ps['port']:<{port_w}} "
+            f"{ps['pid']:<{pid_w}}"
+        )
+        print(row)
 
 
 def human_duration(d):
@@ -360,15 +372,18 @@ def create_vm(vm_name):
 
 
 def stop_vm(vm_name):
-    print(f"Stopping vm {vm_name}")
-    result = qx(["pgrep", "-f", vm_name])
-    if result:
-        pid = result
-        os.kill(int(pid), 9)
-        print(f"vm {vm_name} stopped.")
-        return
+    pid = 0
+    vms = get_running_vms()
+    for vm in vms:
+        if vm["name"] == vm_name:
+            pid = vm["pid"]
 
-    print(f"No running vm found with image {vm_name}.")
+    if not pid:
+        return print(f"No running vm found with image {vm_name}.")
+
+    print(f"Stopping vm {vm_name}")
+    os.kill(int(pid), signal.SIGTERM)
+    return print(f"vm {vm_name} stopped.")
 
 
 def delete_vm(vm_name):
