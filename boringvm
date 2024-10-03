@@ -4,6 +4,7 @@ import argparse
 from pathlib import Path
 import os
 import re
+import platform
 import signal
 import subprocess
 import sys
@@ -22,6 +23,17 @@ def find_open_port(start_port=2222):
                 port += 1  # if the port is in use, try the next one
 
 
+def get_cmdline_macos(pid):
+    return qx(["ps", "-p", pid, "-o", "args=", "-ww"])
+
+
+def get_cmdline_linux(pid):
+    with open(f"/proc/{pid}/cmdline", "r") as f:
+        cmdline = f.read().replace("\0", " ")
+
+    return cmdline
+
+
 def get_running_vms():
     pids = qx(["pgrep", "qemu"])
     ret = []
@@ -29,17 +41,30 @@ def get_running_vms():
         return ret
 
     for pid in pids.splitlines():
-        ps_result = qx(["ps", "-p", pid, "-o", "args=", "-ww"])
-        name_match = re.search(r"/([\w\-]+)\.qcow2", ps_result)
+        if sys.platform == "darwin":
+            ps_result = get_cmdline_macos(pid)
+        else:
+            ps_result = get_cmdline_linux(pid)
+
+        name_match = re.search(r"/vms/([^/]+)\.qcow2", ps_result)
+        if name_match:
+            name = name_match.group(1)
+        else:
+            name = ""
+
         port_match = re.search(r"hostfwd=tcp::(\d+)", ps_result)
-        if name_match and port_match:
-            ret.append(
-                {
-                    "name": name_match.group(1),
-                    "port": port_match.group(1),
-                    "pid": pid,
-                }
-            )
+        if port_match:
+            port = port_match.group(1)
+        else:
+            port = ""
+
+        ret.append(
+            {
+                "name": name,
+                "port": port,
+                "pid": pid,
+            }
+        )
 
     return ret
 
@@ -205,21 +230,50 @@ def get_vm_fn(vm_name):
     return os.path.join(get_vm_store(), vm_name) + ".qcow2"
 
 
-def prepare_drive_options(vm_fn, cdrom=None):
-    d = "/opt/homebrew/share/qemu"
+def exists(arg):
+    return os.path.exists(arg)
+
+
+def find_ovmf():
+    dirs = [
+        "~/.local/share/ovmf",
+        "/usr/share/OVMF",
+        "/usr/share/edk2/ovmf",
+    ]
+    for d in dirs:
+        path = os.path.expanduser(d)
+        if exists(f"{path}/OVMF_CODE.fd") and exists(f"{path}/OVMF_VARS.fd"):
+            return path
+
+    raise RuntimeError("Could not find OMVF")
+
+
+def prepare_drive_options(vm_fn, arch, cdrom=None):
     drv_o = "if=pflash,format=raw"
     file_o = "if=virtio,format=qcow2"
     r = "readonly"
     s = "snapshot"
-    drives = [
-        "-drive",
-        f"file={d}/edk2-aarch64-code.fd,{drv_o},unit=0,{r}=on",
-        "-drive",
-        f"file={d}/edk2-arm-vars.fd,{drv_o},unit=1,{s}=on,{r}=off",
+    if arch == "x86_64":
+        ovmf = find_ovmf()
+        drives = [
+            "-drive",
+            f"file={ovmf}/OVMF_CODE.fd,{drv_o},unit=0,{r}=on",
+            "-drive",
+            f"file={ovmf}/OVMF_VARS.fd,{drv_o},unit=1,{s}=on,{r}=off",
+        ]
+    else:
+        d = "/opt/homebrew/share/qemu"
+        drives = [
+            "-drive",
+            f"file={d}/edk2-aarch64-code.fd,{drv_o},unit=0,{r}=on",
+            "-drive",
+            f"file={d}/edk2-arm-vars.fd,{drv_o},unit=1,{s}=on,{r}=off",
+        ]
+
+    drives += [
         "-drive",
         f"file={vm_fn},index=0,media=disk,{file_o},id=rootdisk,{s}=off",
     ]
-
     if cdrom:
         drives.append("-cdrom", cdrom)
 
@@ -227,11 +281,16 @@ def prepare_drive_options(vm_fn, cdrom=None):
 
 
 def prepare_cpu_memory_options():
+    if sys.platform == "darwin":
+        total_ram = get_total_ram_macos()
+    else:
+        total_ram = get_total_ram_linux()
+
     cpu_options = [
         "-smp",
         str(os.cpu_count()),
         "-m",
-        highest_power_of_2(get_total_ram_macos()),
+        highest_power_of_2(total_ram),
     ]
 
     return cpu_options
@@ -267,18 +326,49 @@ def prepare_graphic_options(graphic):
     return ["-nographic"]
 
 
-def prepare_qemu_command(vm_name, vm_fn, cdrom, graphic):
-    cmd = [
-        "qemu-system-aarch64",
-        "-machine",
-        "virt",
-        "-cpu",
-        "host",
-        "-accel",
-        "hvf",
-    ]
+def qemu_available_accels(qemu):
+    cmd = qemu + " -accel help"
+    info = subprocess.check_output(cmd.split(" ")).decode("utf-8")
+    accel_list = []
+    for accel in ("kvm", "xen", "hvf", "hax", "tcg"):
+        if info.find(accel) > 0:
+            accel_list.append(accel)
 
-    cmd += prepare_drive_options(vm_fn, cdrom)
+    return accel_list
+
+
+def prepare_qemu_command(vm_name, vm_fn, cdrom, graphic):
+    arch = platform.machine()
+    if arch == "x86_64":
+        qemu = "qemu-system-x86_64"
+        machine = "q35"
+        cpu = "qemu64,+ssse3,+sse4.1,+sse4.2,+popcnt"
+    else:
+        qemu = "qemu-system-aarch64"
+        machine = "virt"
+        cpu = "cortex-a57"
+
+    cmd = [
+        qemu,
+        "-machine",
+        machine,
+    ]
+    accel_list = qemu_available_accels(qemu)
+    accel_enabled = True
+    if "kvm" in accel_list and exists("/dev/kvm"):
+        cmd += ["-enable-kvm"]
+    elif "hvf" in accel_list:
+        cmd += ["-accel", "hvf"]
+    else:
+        accel_enabled = False
+
+    cmd += ["-cpu"]
+    if accel_enabled:
+        cmd += ["host"]
+    else:
+        cmd += [cpu]
+
+    cmd += prepare_drive_options(vm_fn, arch, cdrom)
     cmd += prepare_cpu_memory_options()
     cmd += prepare_network_options()
     cmd += prepare_graphic_options(graphic)
@@ -357,7 +447,7 @@ def exec_cmd(args, stderr=True, daemonize=False):
 
 def create_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
-    if os.path.exists(fn):
+    if exists(fn):
         print(f"Image {vm_name} already exists!")
         return
 
@@ -388,7 +478,7 @@ def stop_vm(vm_name):
 
 def delete_vm(vm_name):
     fn = os.path.join(get_vm_store(), vm_name) + ".qcow2"
-    if os.path.exists(fn):
+    if exists(fn):
         print(f"Deleting vm image {vm_name}")
         os.remove(fn)
         return
@@ -410,6 +500,15 @@ def mkdir():
 def get_total_ram_macos():
     total_ram_bytes = qx(["sysctl", "-n", "hw.memsize"])
     return int(total_ram_bytes)
+
+
+def get_total_ram_linux():
+    with open("/proc/meminfo", "r") as meminfo:
+        for line in meminfo:
+            if "MemTotal" in line:
+                # The value is in kB, so multiply by 1024 to get bytes
+                total_ram_kb = int(line.split()[1])
+                return total_ram_kb * 1024
 
 
 def highest_power_of_2(n):
