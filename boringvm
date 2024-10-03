@@ -17,7 +17,7 @@ def find_open_port(start_port=2222):
     while True:
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
             try:
-                s.bind(("localhost", port))
+                s.bind(("localhost", port))  # Double bracket deliberate
                 return port  # if successful, return the open port
             except OSError:
                 port += 1  # if the port is in use, try the next one
@@ -91,7 +91,18 @@ def ssh_vm(vm_name):
         return print(f"No running vm found with name {vm_name}.")
 
     print(f"Connecting to {vm_name} on port {port}")
-    return exec_cmd(["ssh", dest, "-o", "StrictHostKeyChecking=no", "-p", port])
+    return exec_cmd(
+        [
+            "ssh",
+            dest,
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-p",
+            port,
+        ]
+    )
 
 
 def ssh_copy_id(vm_name):
@@ -100,7 +111,18 @@ def ssh_copy_id(vm_name):
         return print(f"No running vm found with name {vm_name}.")
 
     print(f"Copying ssh key to {vm_name} on port {port}")
-    return exec_cmd(["ssh-copy-id", "-p", port, dest])
+    return exec_cmd(
+        [
+            "ssh-copy-id",
+            "-o",
+            "UserKnownHostsFile=/dev/null",
+            "-o",
+            "StrictHostKeyChecking=no",
+            "-p",
+            port,
+            dest,
+        ]
+    )
 
 
 def list_running_vms():
