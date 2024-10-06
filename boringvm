@@ -128,14 +128,14 @@ def ssh_copy_id(vm_name):
 def list_running_vms():
     pses = get_running_vms()
     name_w = len("NAME")
-    port_w = len("PORT")
+    port_w = len("SSH")
     pid_w = len("PID")
     for ps in pses:
         name_w = max(name_w, len(ps["name"]))
         port_w = max(port_w, len(ps["port"]))
         pid_w = max(pid_w, len(ps["pid"]))
 
-    print(f"{'NAME':<{name_w}} {'PORT':<{port_w}} {'PID':<{pid_w}}")
+    print(f"{'NAME':<{name_w}} {'SSH':<{port_w}} {'PID':<{pid_w}}")
     for ps in pses:
         row = (
             f"{ps['name']:<{name_w}} "
