@@ -270,12 +270,49 @@ def find_ovmf():
     raise RuntimeError("Could not find OMVF")
 
 
+qemu_dirs = [
+    "/usr/local/share/qemu",
+    "/opt/homebrew/share/qemu",
+    "/usr/share/edk2/aarch64",
+    "/usr/share/qemu",
+]
+
+
+# location can differ depending on how qemu is installed
+def find_edk2():
+    for path in qemu_dirs:
+        if os.path.exists(path):
+            return path
+
+    raise RuntimeError("Could not find edk2 directory")
+
+
+def find_edk2_code_fd():
+    files = ["QEMU_EFI.fd", "edk2-aarch64-code.fd"]
+
+    for d in qemu_dirs:
+        for f in files:
+            dir_and_file = os.path.join(d, f)
+            if os.path.exists(dir_and_file):
+                return dir_and_file
+
+    raise RuntimeError("Could not find edk2 code fd file")
+
+
 def prepare_drive_options(vm_fn, arch, cdrom=None):
     drv_o = "if=pflash,format=raw"
     file_o = "if=virtio,format=qcow2"
     r = "readonly"
     s = "snapshot"
-    if arch == "x86_64":
+    if sys.platform == "darwin":
+        d = find_edk2()
+        drives = [
+            "-drive",
+            f"file={d}/edk2-aarch64-code.fd,{drv_o},unit=0,{r}=on",
+            "-drive",
+            f"file={d}/edk2-arm-vars.fd,{drv_o},unit=1,{s}=on,{r}=off",
+        ]
+    elif arch == "x86_64":
         ovmf = find_ovmf()
         drives = [
             "-drive",
@@ -284,13 +321,8 @@ def prepare_drive_options(vm_fn, arch, cdrom=None):
             f"file={ovmf}/OVMF_VARS.fd,{drv_o},unit=1,{s}=on,{r}=off",
         ]
     else:
-        d = "/opt/homebrew/share/qemu"
-        drives = [
-            "-drive",
-            f"file={d}/edk2-aarch64-code.fd,{drv_o},unit=0,{r}=on",
-            "-drive",
-            f"file={d}/edk2-arm-vars.fd,{drv_o},unit=1,{s}=on,{r}=off",
-        ]
+        edk2_file = find_edk2_code_fd()
+        drives = ["-bios", f"{edk2_file}", "-boot", "efi"]
 
     drives += [
         "-drive",
