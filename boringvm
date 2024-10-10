@@ -578,7 +578,7 @@ def add_ps_parser(subparsers):
 
 
 def add_images_parser(subparsers):
-    subparsers.add_parser("images", help="list available vm images")
+    subparsers.add_parser("ls", help="list available vm images")
 
 
 def add_run_parser(subparsers):
@@ -637,7 +637,7 @@ def main():
     mkdir()
     if args.command == "ps":
         list_running_vms()
-    elif args.command == "images":
+    elif args.command == "ls":
         list_images()
     elif args.command == "run":
         run_vm(args.vm_name, args.cdrom, args.graphic, args.interactive)

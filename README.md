@@ -45,7 +45,7 @@ boringvm <command> [options]
 - `create`: Create a new virtual machine image.
 - `run`: Start a virtual machine.
 - `ps`: List all running virtual machines and their forwarded ports.
-- `images`: List available VM images.
+- `ls`: List available VM images.
 - `ssh`: SSH into a running virtual machine.
 - `ssh-copy-id`: Copy the SSH key to a virtual machine.
 - `stop`: Stop a running virtual machine.

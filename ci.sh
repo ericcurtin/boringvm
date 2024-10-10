@@ -17,7 +17,7 @@ main() {
     $maybe_sudo ./install.sh
   fi
 
-  boringvm images | grep NAME
+  boringvm ls | grep NAME
   pipx install black flake8
   ./lint.sh
   ./tree-status.sh
